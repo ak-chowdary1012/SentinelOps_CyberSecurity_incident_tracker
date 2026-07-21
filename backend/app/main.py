@@ -10,6 +10,7 @@ from sqlalchemy import inspect
 from app.config import get_settings
 from app.database import SessionLocal, engine
 from app.models import (
+    Base,
     Incident,
     IncidentStatus,
     Log,
@@ -32,9 +33,21 @@ logger = logging.getLogger("sentinelops")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.db_ready = database_schema_ready()
-    if not app.state.db_ready:
-        logger.error(database_not_ready_message())
+    try:
+        # Create tables if they don't exist
+        Base.metadata.create_all(bind=engine)
+
+        # Seed demo data only once
+        if settings.seed_demo_data:
+            seed_demo_data()
+
+        app.state.db_ready = True
+        logger.info("Database initialized successfully.")
+
+    except Exception:
+        logger.exception("Database initialization failed")
+        app.state.db_ready = False
+
     yield
 
 
@@ -86,7 +99,7 @@ def create_app() -> FastAPI:
 
 
 def database_not_ready_message() -> str:
-    return "Database schema is not initialized. Run `python backend/init_db.py` before starting the server."
+    return "Database initialization failed."
 
 
 def database_schema_ready() -> bool:
