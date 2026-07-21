@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 import logging
 
 from fastapi import FastAPI, Request
@@ -32,6 +32,30 @@ from app.services import write_audit
 settings = get_settings()
 logger = logging.getLogger("sentinelops")
 
+BASE_CSP = (
+    "default-src 'self'; "
+    "base-uri 'self'; "
+    "object-src 'none'; "
+    "frame-ancestors 'none'; "
+    "img-src 'self' data:; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "connect-src 'self'; "
+    "form-action 'self'"
+)
+DOCS_CSP = (
+    "default-src 'self'; "
+    "base-uri 'self'; "
+    "object-src 'none'; "
+    "frame-ancestors 'none'; "
+    "img-src 'self' data: https://fastapi.tiangolo.com; "
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "connect-src 'self'; "
+    "form-action 'self'"
+)
+DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,7 +72,7 @@ async def lifespan(app: FastAPI):
         if app.state.db_ready:
             logger.info("Database initialized successfully.")
         else:
-            logger.error(database_not_ready_message())
+            logger.error("Database schema verification failed after initialization.")
 
     except Exception:
         logger.exception("Database initialization failed")
@@ -75,8 +99,22 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def require_initialized_database(request: Request, call_next):
-        if request.url.path != "/health" and not database_schema_ready():
-            return JSONResponse(status_code=503, content={"detail": database_not_ready_message()})
+        ALLOWED_WHEN_DB_NOT_READY = (
+            "/health",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+        )
+
+        if (
+            not request.url.path.startswith(ALLOWED_WHEN_DB_NOT_READY)
+            and not database_schema_ready()
+        ):
+            return JSONResponse(
+                status_code=503,
+                content={"detail": database_not_ready_message()},
+            )
+
         return await call_next(request)
 
     @app.middleware("http")
@@ -84,7 +122,13 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        if request.url.path.startswith(DOCS_PATHS):
+            response.headers["Content-Security-Policy"] = DOCS_CSP
+        else:
+            response.headers["Content-Security-Policy"] = BASE_CSP
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
