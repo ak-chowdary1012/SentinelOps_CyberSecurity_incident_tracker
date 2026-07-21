@@ -7,10 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import inspect
 
+
 from app.config import get_settings
 from app.database import SessionLocal, engine
 from app.models import (
     Base,
+    AuditLog,
     Incident,
     IncidentStatus,
     Log,
@@ -34,22 +36,25 @@ logger = logging.getLogger("sentinelops")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        # Create tables if they don't exist
+        # Create all database tables
         Base.metadata.create_all(bind=engine)
 
-        # Seed demo data only once
+        # Seed demo data only if enabled
         if settings.seed_demo_data:
             seed_demo_data()
 
-        app.state.db_ready = True
-        logger.info("Database initialized successfully.")
+        app.state.db_ready = database_schema_ready()
+
+        if app.state.db_ready:
+            logger.info("Database initialized successfully.")
+        else:
+            logger.error(database_not_ready_message())
 
     except Exception:
         logger.exception("Database initialization failed")
         app.state.db_ready = False
 
     yield
-
 
 def create_app() -> FastAPI:
     app = FastAPI(
