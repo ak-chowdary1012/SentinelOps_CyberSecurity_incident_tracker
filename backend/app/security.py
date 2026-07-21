@@ -1,26 +1,47 @@
 import hashlib
 import hmac
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
+import jwt
 
 from app.config import get_settings
 
 
 settings = get_settings()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = "HS256"
+MAX_BCRYPT_BYTES = 72
+
+
+def validate_password_strength(password: str) -> None:
+    if len(password) < 12:
+        raise ValueError("Password must be at least 12 characters long")
+    if len(password.encode("utf-8")) > MAX_BCRYPT_BYTES:
+        raise ValueError("Password must be 72 bytes or fewer")
+    checks = [
+        (r"[a-z]", "lowercase letter"),
+        (r"[A-Z]", "uppercase letter"),
+        (r"\d", "number"),
+        (r"[^A-Za-z0-9]", "symbol"),
+    ]
+    missing = [label for pattern, label in checks if not re.search(pattern, password)]
+    if missing:
+        raise ValueError(f"Password must include a {', '.join(missing)}")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    password_bytes = plain_password.encode("utf-8")
+    if len(password_bytes) > MAX_BCRYPT_BYTES:
+        return False
+    return bcrypt.checkpw(password_bytes, hashed_password.encode("utf-8"))
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    validate_password_strength(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def create_access_token(subject: str, role: str) -> str:
@@ -44,7 +65,7 @@ def verify_token_hash(token: str, token_hash: str) -> bool:
 def decode_access_token(token: str) -> dict[str, Any]:
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
-    except JWTError as exc:
+    except jwt.PyJWTError as exc:
         raise ValueError("Invalid authentication token") from exc
     if payload.get("type") != "access":
         raise ValueError("Invalid token type")

@@ -9,7 +9,7 @@ For portfolio use, open a private advisory or contact the repository owner direc
 ## Security Controls
 - JWT access tokens.
 - Refresh token hashing and revocation.
-- Passlib bcrypt password hashing.
+- Direct bcrypt password hashing with server-side password policy validation.
 - RBAC-protected endpoints.
 - Audit logging for login, logout, create, update, and delete.
 - Sensitive fields excluded from serialized responses.
@@ -20,5 +20,5 @@ For portfolio use, open a private advisory or contact the repository owner direc
 - Replace demo secrets and credentials.
 - Use HTTPS-only deployment.
 - Set explicit CORS origins.
-- Add rate limiting and account lockout.
+- Use production-grade distributed rate limiting before horizontal scaling.
 - Add centralized logging and monitoring.

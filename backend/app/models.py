@@ -5,7 +5,6 @@ from sqlalchemy import (
     JSON,
     Boolean,
     CheckConstraint,
-    Date,
     DateTime,
     Enum as SQLEnum,
     ForeignKey,

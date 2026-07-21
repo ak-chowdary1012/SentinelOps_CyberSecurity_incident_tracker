@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: sentinelops
       POSTGRES_USER: sentinelops
-      POSTGRES_PASSWORD: sentinelops
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sentinelops_dev_password_change_me}
     ports:
       - "5432:5432"
     volumes:
@@ -19,8 +19,8 @@ services:
     build: ./backend
     env_file: .env.example
     environment:
-      DATABASE_URL: postgresql+psycopg2://sentinelops:sentinelops@db:5432/sentinelops
-      CORS_ORIGINS: "*"
+      DATABASE_URL: postgresql+psycopg2://sentinelops:${POSTGRES_PASSWORD:-sentinelops_dev_password_change_me}@db:5432/sentinelops
+      CORS_ORIGINS: "http://127.0.0.1:8000,http://localhost:8000"
     ports:
       - "8000:8000"
     depends_on:

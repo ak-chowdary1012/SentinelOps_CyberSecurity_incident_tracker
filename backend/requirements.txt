@@ -4,8 +4,9 @@ SQLAlchemy==2.0.*
 psycopg2-binary
 python-dotenv
 pydantic
-python-jose[cryptography]
-passlib[bcrypt]
+PyJWT[crypto]
+bcrypt==4.0.1
+python-multipart
 pytest
 httpx
 h11>=0.16

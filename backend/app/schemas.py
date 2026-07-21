@@ -4,6 +4,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, IPvAnyAddress, field_validator
 
 from app.models import IncidentStatus, Role, Severity, SystemStatus, VulnerabilityStatus
+from app.security import validate_password_strength
 
 
 class APIMessage(BaseModel):
@@ -17,12 +18,12 @@ class TokenPair(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=50)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(min_length=32, max_length=256)
 
 
 class UserBase(BaseModel):
@@ -34,15 +35,28 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=12, max_length=72)
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, value: str) -> str:
+        validate_password_strength(value)
+        return value
 
 
 class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     role: Role | None = None
     contact: str | None = Field(default=None, min_length=3, max_length=150)
-    password: str | None = Field(default=None, min_length=8, max_length=128)
+    password: str | None = Field(default=None, min_length=12, max_length=72)
     is_active: bool | None = None
+
+    @field_validator("password")
+    @classmethod
+    def optional_password_strength(cls, value: str | None) -> str | None:
+        if value is not None:
+            validate_password_strength(value)
+        return value
 
 
 class UserOut(UserBase):
@@ -91,7 +105,7 @@ class IncidentBase(BaseModel):
     type: str = Field(min_length=1, max_length=80)
     severity: Severity
     status: IncidentStatus = IncidentStatus.open
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=5000)
     resolved_at: datetime | None = None
 
 
@@ -104,7 +118,7 @@ class IncidentUpdate(BaseModel):
     type: str | None = Field(default=None, min_length=1, max_length=80)
     severity: Severity | None = None
     status: IncidentStatus | None = None
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=5000)
     resolved_at: datetime | None = None
 
 
@@ -116,7 +130,7 @@ class IncidentOut(IncidentBase):
 
 class LogBase(BaseModel):
     timestamp: datetime | None = None
-    event: str = Field(min_length=1)
+    event: str = Field(min_length=1, max_length=5000)
     source: str = Field(min_length=1, max_length=80)
     severity: Severity = Severity.low
     system_id: int | None = None
@@ -128,7 +142,7 @@ class LogCreate(LogBase):
 
 class LogUpdate(BaseModel):
     timestamp: datetime | None = None
-    event: str | None = Field(default=None, min_length=1)
+    event: str | None = Field(default=None, min_length=1, max_length=5000)
     source: str | None = Field(default=None, min_length=1, max_length=80)
     severity: Severity | None = None
     system_id: int | None = None
@@ -141,7 +155,7 @@ class LogOut(LogBase):
 
 
 class VulnerabilityBase(BaseModel):
-    description: str = Field(min_length=1)
+    description: str = Field(min_length=1, max_length=5000)
     severity: Severity
     status: VulnerabilityStatus = VulnerabilityStatus.open
     cve: str | None = Field(default=None, max_length=32)
@@ -153,7 +167,7 @@ class VulnerabilityCreate(VulnerabilityBase):
 
 
 class VulnerabilityUpdate(BaseModel):
-    description: str | None = Field(default=None, min_length=1)
+    description: str | None = Field(default=None, min_length=1, max_length=5000)
     severity: Severity | None = None
     status: VulnerabilityStatus | None = None
     cve: str | None = Field(default=None, max_length=32)
@@ -167,7 +181,7 @@ class VulnerabilityOut(VulnerabilityBase):
 
 class ResponseBase(BaseModel):
     incident_id: int
-    action_taken: str = Field(min_length=1)
+    action_taken: str = Field(min_length=1, max_length=5000)
     responder: str = Field(min_length=1, max_length=100)
     time_taken: int = Field(ge=0)
 
@@ -178,7 +192,7 @@ class ResponseCreate(ResponseBase):
 
 class ResponseUpdate(BaseModel):
     incident_id: int | None = None
-    action_taken: str | None = Field(default=None, min_length=1)
+    action_taken: str | None = Field(default=None, min_length=1, max_length=5000)
     responder: str | None = Field(default=None, min_length=1, max_length=100)
     time_taken: int | None = Field(default=None, ge=0)
 

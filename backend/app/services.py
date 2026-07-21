@@ -42,6 +42,16 @@ def model_to_dict(obj: Any) -> dict[str, Any]:
     return data
 
 
+def sanitize_export_value(value: Any) -> Any:
+    if isinstance(value, str) and value.startswith(("=", "+", "-", "@")):
+        return "'" + value
+    return value
+
+
+def sanitize_export_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {key: sanitize_export_value(value) for key, value in row.items()}
+
+
 def normalize_json(data: dict[str, Any] | None) -> dict[str, Any] | None:
     if data is None:
         return None
@@ -306,5 +316,5 @@ def rows_to_csv(rows: list[dict[str, Any]]) -> str:
         return ""
     writer = csv.DictWriter(output, fieldnames=list(rows[0].keys()))
     writer.writeheader()
-    writer.writerows(rows)
+    writer.writerows(sanitize_export_row(row) for row in rows)
     return output.getvalue()

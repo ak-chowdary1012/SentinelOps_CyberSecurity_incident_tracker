@@ -1,11 +1,14 @@
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
+import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import inspect
 
 from app.config import get_settings
-from app.database import Base, SessionLocal, engine
+from app.database import SessionLocal, engine
 from app.models import (
     Incident,
     IncidentStatus,
@@ -24,13 +27,14 @@ from app.services import write_audit
 
 
 settings = get_settings()
+logger = logging.getLogger("sentinelops")
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
-    Base.metadata.create_all(bind=engine)
-    if settings.seed_demo_data:
-        seed_demo_data()
+async def lifespan(app: FastAPI):
+    app.state.db_ready = database_schema_ready()
+    if not app.state.db_ready:
+        logger.error(database_not_ready_message())
     yield
 
 
@@ -51,11 +55,47 @@ def create_app() -> FastAPI:
     for router in ROUTERS:
         app.include_router(router)
 
+    @app.middleware("http")
+    async def require_initialized_database(request: Request, call_next):
+        if request.url.path != "/health" and not database_schema_ready():
+            return JSONResponse(status_code=503, content={"detail": database_not_ready_message()})
+        return await call_next(request)
+
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000"
+        if request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        logger.exception("Unhandled exception for %s %s", request.method, request.url.path)
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
     @app.get("/health", tags=["Health"])
     def health() -> dict[str, str]:
+        if not database_schema_ready():
+            return {"status": "setup_required", "service": settings.app_name, "detail": database_not_ready_message()}
         return {"status": "ok", "service": settings.app_name}
 
     return app
+
+
+def database_not_ready_message() -> str:
+    return "Database schema is not initialized. Run `python backend/init_db.py` before starting the server."
+
+
+def database_schema_ready() -> bool:
+    try:
+        inspector = inspect(engine)
+        return all(inspector.has_table(table) for table in ("users", "incidents", "audit_logs"))
+    except Exception:
+        logger.exception("Database readiness check failed")
+        return False
 
 
 def seed_demo_data() -> None:

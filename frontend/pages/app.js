@@ -1,6 +1,8 @@
 const API = window.API_BASE || "http://127.0.0.1:8000";
 const TOKEN_KEY = "sentinelops_access_token";
 const REFRESH_KEY = "sentinelops_refresh_token";
+const LEGACY_TOKEN_KEY = "access_token";
+const LEGACY_REFRESH_KEY = "refresh_token";
 
 const nav = [
     ["dashboard.html", "SOC Dashboard"],
@@ -108,6 +110,11 @@ const entityConfig = {
 const pageState = {};
 const editState = {};
 
+window.addEventListener("unhandledrejection", (event) => {
+    event.preventDefault();
+    toast(event.reason?.message || "Unexpected application error", true);
+});
+
 function shell(title, description) {
     const current = location.pathname.split("/").pop() || "dashboard.html";
     document.body.innerHTML = `
@@ -153,6 +160,10 @@ function showLogin(show) {
 
 function toast(message, isError = false) {
     const el = document.getElementById("toast");
+    if (!el) {
+        console.error(message);
+        return;
+    }
     el.textContent = message;
     el.style.borderColor = isError ? "rgba(251, 113, 133, .55)" : "rgba(52, 211, 153, .45)";
     el.style.display = "block";
@@ -161,9 +172,14 @@ function toast(message, isError = false) {
 
 async function api(path, options = {}) {
     const headers = {"Content-Type": "application/json", ...(options.headers || {})};
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
     if (token) headers.Authorization = `Bearer ${token}`;
-    const res = await fetch(`${API}${path}`, {...options, headers});
+    let res;
+    try {
+        res = await fetch(`${API}${path}`, {...options, headers});
+    } catch (err) {
+        throw new Error(`Network error: ${err.message}`);
+    }
     if (res.status === 401) {
         showLogin(true);
         throw new Error("Session expired. Sign in again.");
@@ -192,6 +208,8 @@ async function login(event) {
         });
         localStorage.setItem(TOKEN_KEY, data.access_token);
         localStorage.setItem(REFRESH_KEY, data.refresh_token);
+        localStorage.setItem(LEGACY_TOKEN_KEY, data.access_token);
+        localStorage.setItem(LEGACY_REFRESH_KEY, data.refresh_token);
         showLogin(false);
         toast("Signed in");
         window.dispatchEvent(new Event("auth-ready"));
@@ -201,12 +219,14 @@ async function login(event) {
 }
 
 async function logout() {
-    const refresh = localStorage.getItem(REFRESH_KEY);
+    const refresh = localStorage.getItem(REFRESH_KEY) || localStorage.getItem(LEGACY_REFRESH_KEY);
     try {
         if (refresh) await api("/auth/logout", {method: "POST", body: JSON.stringify({refresh_token: refresh})});
     } catch (_) {}
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_REFRESH_KEY);
     showLogin(true);
 }
 
@@ -448,7 +468,7 @@ async function downloadReport(entity, fmt) {
         link.href = url;
         link.download = `${entity}.${fmt}`;
         link.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 0);
     } catch (err) {
         toast(err.message, true);
     }
@@ -495,12 +515,12 @@ async function loadDashboard() {
         const data = await api("/dashboard/metrics");
         const threatClass = data.threat_level === "Critical" ? "threat-critical" : data.threat_level === "Elevated" ? "threat-elevated" : "threat-normal";
         const cards = [
-            ["Threat Level", data.threat_level, threatClass],
-            ["Critical Incidents", data.critical_incidents],
-            ["Open Incidents", data.open_incidents],
-            ["Resolved", data.resolved_incidents],
-            ["Avg Resolution", `${data.average_resolution_minutes}m`],
-            ["Systems Protected", data.systems_protected],
+            ["Threat Level", data.threat_level, threatClass, "threat_level"],
+            ["Critical Incidents", data.critical_incidents, "", "critical_incidents"],
+            ["Open Incidents", data.open_incidents, "", "open_incidents"],
+            ["Resolved", data.resolved_incidents, "", "resolved_incidents"],
+            ["Avg Resolution", `${data.average_resolution_minutes}m`, "", "average_resolution_minutes"],
+            ["Systems Protected", data.systems_protected, "", "systems_protected"],
         ];
         document.getElementById("riskScore").textContent = `${data.organizational_risk_score}/100 ${data.risk_level}`;
         document.getElementById("riskScore").className = `risk-score threat-${data.risk_level.toLowerCase()}`;
@@ -513,7 +533,7 @@ async function loadDashboard() {
                 <div><span>Analysts Online</span><strong>${data.analysts_online}</strong></div>
                 <div><span>Systems Online</span><strong>${data.systems_online}</strong></div>
             </div>`;
-        document.getElementById("kpis").innerHTML = cards.map(([label, value, cls = ""]) => `<div class="card"><div class="metric-label">${label}</div><div class="metric-value ${cls}">${value}</div></div>`).join("");
+        document.getElementById("kpis").innerHTML = cards.map(([label, value, cls = "", key]) => `<div class="card" data-metric="${key}"><div class="metric-label">${label}</div><div class="metric-value ${cls}">${value}</div></div>`).join("");
         chart("severityChart", "doughnut", data.incident_severity);
         chart("trendChart", "line", data.incident_trend);
         chart("vulnChart", "bar", data.vulnerability_distribution);

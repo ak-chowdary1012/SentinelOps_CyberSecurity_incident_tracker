@@ -5,11 +5,11 @@ import zipfile
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
-from app.crud import MODEL_CONFIG, list_records
+from app.crud import list_records
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import User
-from app.services import model_to_dict, rows_to_csv
+from app.services import model_to_dict, rows_to_csv, sanitize_export_row
 
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
@@ -97,8 +97,8 @@ def export_report(entity: str, fmt: str, db: Session = Depends(get_db), _: User 
     if fmt not in {"csv", "xlsx", "pdf"}:
         raise HTTPException(status_code=400, detail="Supported formats: csv, xlsx, pdf")
 
-    rows, _total = list_records(db, entity, page=1, page_size=10000)
-    data = [model_to_dict(row) for row in rows]
+    rows, _total = list_records(db, entity, page=1, page_size=1000)
+    data = [sanitize_export_row(model_to_dict(row)) for row in rows]
 
     if fmt == "csv":
         return Response(
