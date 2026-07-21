@@ -173,7 +173,7 @@ All checks passed!
 
 ## Fresh Clone Verified
 
-Verified on 2026-07-21 from a separate clone directory with no copied local database, virtualenv, proof image, or `.env` from the working checkout:
+Verified on 2026-07-21 from a separate clone directory at commit `5b9cfad`, with no copied local database, virtualenv, proof image, or `.env` from the working checkout:
 
 ```powershell
 git clone C:\Users\nekka\cybersec-incident-tracker sentinelops-freshclone
@@ -182,12 +182,34 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
 .\.venv\Scripts\python.exe backend\init_db.py
 .\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
+$server = Start-Process -PassThru -FilePath ".\.venv\Scripts\python.exe" -ArgumentList "-m","uvicorn","app.main:app","--app-dir","backend","--host","127.0.0.1","--port","8000"
 .\.venv\Scripts\python.exe live_api_smoke.py
+Stop-Process -Id $server.Id
 .\.venv\Scripts\python.exe dashboard_charts_proof.py
 ```
 
-The browser proof generates `dashboard_charts_proof.png` locally; the image is ignored by Git.
+Real outputs from the completed verification:
+
+```text
+pytest: 4 passed, 1 warning in 3.36s
+ruff: All checks passed! (--no-cache used because .ruff_cache was locked)
+live_api_smoke.py:
+login_token_type: bearer
+created_system_id: 11
+created_incident_id: 12
+search_incidents_total: 1
+audit_rows: 50
+exports: {'csv': 'text/csv; charset=utf-8', 'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'pdf': 'application/pdf'}
+live api smoke: ok
+dashboard_charts_proof.py:
+browser login: ok, token present: True
+canvas count: 5
+canvas painted pixels: [20753, 8554, 10285, 12957, 9622]
+console errors: []
+screenshot: C:\Users\nekka\SentinelOps_CyberSecurity_incident_tracker\dashboard_charts_proof_latest.png
+```
+
+The browser proof starts its own API and frontend server, verifies browser login with real `fetch()`/CORS enforcement, confirms all five Chart.js canvases have painted pixels, and writes a local ignored screenshot (`dashboard_charts_proof.png` or `dashboard_charts_proof_latest.png` if Windows locks the canonical image).
 
 ## License
 MIT

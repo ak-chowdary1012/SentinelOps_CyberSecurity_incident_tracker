@@ -178,6 +178,7 @@ async function api(path, options = {}) {
     try {
         res = await fetch(`${API}${path}`, {...options, headers});
     } catch (err) {
+        console.error(`API request failed: ${API}${path}`, err);
         throw new Error(`Network error: ${err.message}`);
     }
     if (res.status === 401) {
@@ -214,6 +215,7 @@ async function login(event) {
         toast("Signed in");
         window.dispatchEvent(new Event("auth-ready"));
     } catch (err) {
+        console.error("Login failed", err);
         toast(err.message, true);
     }
 }

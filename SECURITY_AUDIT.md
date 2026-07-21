@@ -32,8 +32,11 @@ Audit date: 2026-07-21
 - Browser login:
   - Initial Playwright run found `OPTIONS /auth/login HTTP/1.1" 400 Bad Request`; fixed by adding the local frontend origin to CORS defaults.
   - Second Playwright run logged `Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED`; fixed by vendoring Chart.js `4.5.1` at `frontend/pages/vendor/chart.umd.min.js` instead of using a runtime CDN.
-  - Final Playwright chart proof returned `browser login: ok, token present: True`, `canvas count: 5`, `canvas painted pixels: [31771, 9211, 36178, 27056, 35900]`, and `console errors: []`.
-  - Screenshot reviewed at `dashboard_charts_proof.png`; charts have visible rendered bars, lines, and doughnut segments.
+  - Fresh-clone browser timeout root cause: `dashboard_charts_proof.py` launched Uvicorn with `cwd=backend`, causing the default relative SQLite URL to use `backend\\cybersec_incidents.db` instead of the initialized root `cybersec_incidents.db`. The dashboard shell rendered blank canvases behind the login overlay, and the proof waited for chart pixels before proving login.
+  - Fix: the proof now starts Uvicorn from the repository root with `--app-dir backend`, waits for `sentinelops_access_token` before canvas checks, reports early API subprocess exits, and writes a fallback screenshot if Windows locks the canonical proof image. Frontend login/fetch failures now log `console.error`.
+  - CORS recheck: `ENVIRONMENT` was unset and `Origin: http://127.0.0.1:5500` received `access-control-allow-origin: http://127.0.0.1:5500`.
+  - Final Playwright chart proof returned `browser login: ok, token present: True`, `canvas count: 5`, `canvas painted pixels: [20753, 8554, 10285, 12957, 9622]`, and `console errors: []`.
+  - Screenshot reviewed at `dashboard_charts_proof_latest.png`; charts have visible rendered bars, lines, and doughnut segments.
 - Dependencies:
   - Initial `pip-audit` found `ecdsa 0.19.2 PYSEC-2026-1325`.
   - After replacing `python-jose` with `PyJWT`, `pip-audit` returned `No known vulnerabilities found`.
@@ -49,7 +52,7 @@ Audit date: 2026-07-21
 
 ## Blocked checks
 
-- Real-browser proof: Playwright Chromium was installed successfully. Required login script returned `browser login: ok, token present: True` and `console errors: []`.
+- Real-browser proof: Playwright Chromium was installed successfully. Required dashboard chart proof returned `browser login: ok, token present: True`, `canvas count: 5`, and `console errors: []`.
 - Docker Compose proof: still blocked by this Windows sandbox.
   - `winget`, `choco`, `scoop`, and `docker` are not on PATH.
   - Administrator check returned `False`.

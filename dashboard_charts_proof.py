@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parent
 BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend" / "pages"
 SCREENSHOT = ROOT / "dashboard_charts_proof.png"
+SCREENSHOT_FALLBACK = ROOT / "dashboard_charts_proof_latest.png"
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -37,10 +38,28 @@ def wait_for(url: str, timeout: float = 15.0) -> None:
     raise RuntimeError(f"Timed out waiting for {url}")
 
 
+def fail_if_exited(process: subprocess.Popen[str], name: str) -> None:
+    if process.poll() is None:
+        return
+    stderr = process.stderr.read() if process.stderr else ""
+    raise RuntimeError(f"{name} exited before proof completed:\n{stderr}")
+
+
 def main() -> None:
     api = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
-        cwd=BACKEND,
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "app.main:app",
+            "--app-dir",
+            str(BACKEND),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8000",
+        ],
+        cwd=ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -50,6 +69,7 @@ def main() -> None:
     server_thread.start()
     try:
         wait_for("http://127.0.0.1:8000/health")
+        fail_if_exited(api, "API server")
         with sync_playwright() as p:
             browser = p.chromium.launch()
             page = browser.new_page(viewport={"width": 1440, "height": 1000})
@@ -59,6 +79,7 @@ def main() -> None:
             page.fill("#loginUsername", "admin")
             page.fill("#loginPassword", "AdminPass123!")
             page.click("button[type='submit']")
+            page.wait_for_function("Boolean(localStorage.getItem('sentinelops_access_token'))", timeout=10000)
             page.wait_for_selector("canvas", timeout=5000)
             page.wait_for_function(
                 """() => [...document.querySelectorAll('canvas')].length > 0
@@ -87,13 +108,18 @@ def main() -> None:
                 })""",
             )
             token_present = page.evaluate("Boolean(localStorage.getItem('sentinelops_access_token'))")
-            page.screenshot(path=str(SCREENSHOT), full_page=True)
+            screenshot_path = SCREENSHOT
+            try:
+                page.screenshot(path=str(screenshot_path), full_page=True)
+            except PermissionError:
+                screenshot_path = SCREENSHOT_FALLBACK
+                page.screenshot(path=str(screenshot_path), full_page=True)
             browser.close()
         print(f"browser login: ok, token present: {token_present}")
         print(f"canvas count: {canvas_count}")
         print(f"canvas painted pixels: {painted_pixels}")
         print(f"console errors: {console_errors}")
-        print(f"screenshot: {SCREENSHOT}")
+        print(f"screenshot: {screenshot_path}")
         assert token_present, "login token missing"
         assert canvas_count > 0, "no chart canvases rendered"
         assert all(count > 500 for count in painted_pixels), "one or more chart canvases are blank"

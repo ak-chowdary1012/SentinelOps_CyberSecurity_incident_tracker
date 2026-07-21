@@ -136,3 +136,26 @@
   - `.\\.venv\\Scripts\\python.exe -m ruff check backend tests` returned `All checks passed!`.
   - `node --check frontend\\pages\\app.js` exited 0 with no output.
   - `.\\.venv\\Scripts\\pip-audit.exe -r backend\\requirements.txt` returned `No known vulnerabilities found`.
+
+## Browser proof timeout root cause
+
+- What was wrong: `dashboard_charts_proof.py` launched Uvicorn with `cwd=backend`, while the documented fresh-clone initialization command, `.\\.venv\\Scripts\\python.exe backend\\init_db.py`, creates `cybersec_incidents.db` in the repository root. Because the default SQLite URL is `sqlite:///./cybersec_incidents.db`, the proof used `backend\\cybersec_incidents.db` instead of the initialized root database. The page rendered five blank canvas elements behind the login overlay, so the proof waited on chart pixels without first proving that browser login had completed.
+- Instrumented proof output from the root-started API showed the browser path itself was healthy:
+  - `access_token: <jwt present>`
+  - `page url: http://127.0.0.1:5500/dashboard.html`
+  - no `CONSOLE`, `PAGEERROR`, `REQUEST FAILED`, or `RESPONSE >= 400` lines.
+  - Screenshot reviewed: login overlay hidden, dashboard metrics visible, and chart panels rendered.
+- CORS check: `ENVIRONMENT` was unset and the response included `access-control-allow-origin: http://127.0.0.1:5500`, confirming the fresh-clone default enters the development CORS branch.
+- Fix: `dashboard_charts_proof.py` now starts Uvicorn from the repository root with `--app-dir backend`, matching the fresh-clone command and the root database path. It also waits for `sentinelops_access_token` before checking canvases, fails early if the API subprocess exits, and falls back to `dashboard_charts_proof_latest.png` if Windows locks the canonical proof image. Frontend login/fetch failures now emit `console.error` as well as the existing toast.
+- Proof: `.\\.venv\\Scripts\\python.exe dashboard_charts_proof.py` returned:
+  - `browser login: ok, token present: True`
+  - `canvas count: 5`
+  - `canvas painted pixels: [20753, 8554, 10285, 12957, 9622]`
+  - `console errors: []`
+  - `screenshot: C:\\Users\\nekka\\SentinelOps_CyberSecurity_incident_tracker\\dashboard_charts_proof_latest.png`
+- Screenshot reviewed: severity, trend, vulnerability, health, and attack-type charts all show real rendered data.
+- Full post-fix verification:
+  - `.\\.venv\\Scripts\\python.exe -m pytest -q` returned `4 passed, 1 warning in 3.36s`.
+  - `.\\.venv\\Scripts\\python.exe -m ruff check backend tests dashboard_charts_proof.py live_api_smoke.py` hit a locked `.ruff_cache` temporary-file permission error; rerunning the same lint surface with `--no-cache` returned `All checks passed!`.
+  - `node --check frontend\\pages\\app.js` exited 0 with no output.
+  - With Uvicorn running from the repository root using `--app-dir backend`, `.\\.venv\\Scripts\\python.exe live_api_smoke.py` returned `login_token_type: bearer`, created system `11`, created incident `12`, `search_incidents_total: 1`, `audit_rows: 50`, all three export content types, and `live api smoke: ok`.
