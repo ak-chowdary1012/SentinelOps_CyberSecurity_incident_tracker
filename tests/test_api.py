@@ -79,6 +79,26 @@ def analyst_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
 
+def test_swagger_oauth2_password_flow_uses_form_token_endpoint():
+    openapi = client.get("/openapi.json").json()
+    password_flow = openapi["components"]["securitySchemes"]["OAuth2PasswordBearer"]["flows"]["password"]
+    assert password_flow["tokenUrl"] == "/auth/token"
+
+    token = client.post(
+        "/auth/token",
+        data={"username": "admin", "password": "AdminPass123!"},
+    )
+    assert token.status_code == 200
+    token_pair = token.json()
+    assert token_pair["access_token"]
+    assert token_pair["refresh_token"]
+    assert token_pair["token_type"] == "bearer"
+
+    me = client.get("/users/me", headers={"Authorization": f"Bearer {token_pair['access_token']}"})
+    assert me.status_code == 200
+    assert me.json()["username"] == "admin"
+
+
 def test_health_and_authentication():
     assert client.get("/health").status_code == 200
     assert client.get("/incidents").status_code == 401

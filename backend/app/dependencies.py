@@ -9,7 +9,7 @@ from app.models import Role, User
 from app.security import decode_access_token
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 def get_client_ip(request: Request) -> str | None:

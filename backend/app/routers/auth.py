@@ -2,6 +2,7 @@ from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -62,24 +63,42 @@ def clear_login_failures(username: str) -> None:
     _user_failures.pop(username, None)
 
 
+def authenticate_and_issue_token_pair(
+    request: Request,
+    username: str,
+    password: str,
+    db: Session,
+) -> TokenPair:
+    enforce_login_rate_limit(request)
+    enforce_username_lockout(username)
+    user = authenticate(db, username, password)
+    if not user:
+        record_ip_failure(request)
+        record_login_failure(username)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
+    clear_login_failures(username)
+    access_token, refresh_token = issue_tokens(db, user)
+    write_audit(db, user=user, action="LOGIN", entity="auth", ip_address=get_client_ip(request))
+    db.commit()
+    return TokenPair(access_token=access_token, refresh_token=refresh_token)
+
+
 @router.post("/login", response_model=TokenPair)
 def login(
     request: Request,
     payload: LoginRequest,
     db: Session = Depends(get_db),
 ):
-    enforce_login_rate_limit(request)
-    enforce_username_lockout(payload.username)
-    user = authenticate(db, payload.username, payload.password)
-    if not user:
-        record_ip_failure(request)
-        record_login_failure(payload.username)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
-    clear_login_failures(payload.username)
-    access_token, refresh_token = issue_tokens(db, user)
-    write_audit(db, user=user, action="LOGIN", entity="auth", ip_address=get_client_ip(request))
-    db.commit()
-    return TokenPair(access_token=access_token, refresh_token=refresh_token)
+    return authenticate_and_issue_token_pair(request, payload.username, payload.password, db)
+
+
+@router.post("/token", response_model=TokenPair)
+def token(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    return authenticate_and_issue_token_pair(request, form_data.username, form_data.password, db)
 
 
 @router.post("/refresh", response_model=TokenPair)
