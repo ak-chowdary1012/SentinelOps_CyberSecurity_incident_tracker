@@ -124,9 +124,10 @@ function shell(title, description) {
     document.body.innerHTML = `
         <div class="shell">
             <aside class="sidebar">
-                <div class="brand">Sentinel<span>Ops</span></div>
+                <div class="brand">Sentinel<span>Ops</span><sup>&trade;</sup></div>
                 <div class="subtitle">Security Operations Center</div>
                 <nav class="nav">${nav.map(([href, label]) => `<a class="${href === current ? "active" : ""}" href="${href}">${label}</a>`).join("")}</nav>
+                <div class="creator-mark">N V AVINASH KRISHNA</div>
             </aside>
             <main class="main">
                 <div class="topbar">
@@ -138,12 +139,13 @@ function shell(title, description) {
                     </div>
                 </div>
                 <div id="content"></div>
+                <footer class="app-footer">SentinelOps &bull; Designed &amp; Developed by N V Avinash Krishna</footer>
             </main>
         </div>
         <div class="toast" id="toast"></div>
         <div class="login" id="loginOverlay">
             <form class="panel login-card" id="loginForm">
-                <div class="brand large">Sentinel<span>Ops</span></div>
+                <div class="brand large">Sentinel<span>Ops</span><sup>&trade;</sup></div>
                 <h2>Analyst Sign In</h2>
                 <p>Authenticate to view SOC telemetry, incidents, and audit activity.</p>
                 <label>Username<input id="loginUsername" value="admin" required></label>
@@ -565,11 +567,29 @@ function chart(id, type, data) {
             labels: Object.keys(data),
             datasets: [{
                 data: Object.values(data),
-                borderColor: "#22d3ee",
-                backgroundColor: ["#22d3ee", "#a78bfa", "#fb7185", "#fbbf24", "#34d399"],
+                borderColor: "#D4AF37",
+                backgroundColor: ["#D4AF37", "#E7C873", "#8c6f22", "#b94444", "#3f9f78"],
                 tension: 0.35,
+                borderWidth: 2,
+                pointBackgroundColor: "#F1D98A",
+                pointBorderColor: "#070707",
             }],
         },
-        options: {plugins: {legend: {labels: {color: "#c9d8ea"}}}, scales: {x: {ticks: {color: "#8fa4bf"}}, y: {ticks: {color: "#8fa4bf"}}}},
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {labels: {color: "#f7f4ec"}},
+            },
+            scales: {
+                x: {
+                    grid: {color: "rgba(247,244,236,0.08)"},
+                    ticks: {color: "rgba(247,244,236,0.62)"},
+                },
+                y: {
+                    grid: {color: "rgba(247,244,236,0.08)"},
+                    ticks: {color: "rgba(247,244,236,0.62)"},
+                },
+            },
+        },
     });
 }
