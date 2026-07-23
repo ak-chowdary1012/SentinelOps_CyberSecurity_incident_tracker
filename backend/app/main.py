@@ -100,16 +100,14 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def require_initialized_database(request: Request, call_next):
         ALLOWED_WHEN_DB_NOT_READY = (
+            "/",
             "/health",
             "/docs",
             "/redoc",
             "/openapi.json",
         )
 
-        if (
-            not request.url.path.startswith(ALLOWED_WHEN_DB_NOT_READY)
-            and not database_schema_ready()
-        ):
+        if request.url.path not in ALLOWED_WHEN_DB_NOT_READY and not database_schema_ready():
             return JSONResponse(
                 status_code=503,
                 content={"detail": database_not_ready_message()},
@@ -137,6 +135,18 @@ def create_app() -> FastAPI:
     async def unhandled_exception_handler(request: Request, exc: Exception):
         logger.exception("Unhandled exception for %s %s", request.method, request.url.path)
         return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+    @app.get("/", tags=["Health"])
+    def root() -> dict[str, str]:
+        return {
+            "name": settings.app_name,
+            "version": "2.0.0",
+            "status": "online",
+            "health": "/health",
+            "docs": "/docs",
+            "redoc": "/redoc",
+            "openapi": "/openapi.json",
+        }
 
     @app.get("/health", tags=["Health"])
     def health() -> dict[str, str]:

@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 from uuid import uuid4
 
+import app.main as main_module
 from app.database import Base, engine
 from app.main import app
 from app.main import seed_demo_data
@@ -11,6 +12,54 @@ seed_demo_data()
 
 
 client = TestClient(app)
+
+
+def test_public_utility_endpoints_and_csp():
+    root = client.get("/")
+    assert root.status_code == 200
+    assert root.json() == {
+        "name": "SentinelOps Cybersecurity Incident Platform",
+        "version": "2.0.0",
+        "status": "online",
+        "health": "/health",
+        "docs": "/docs",
+        "redoc": "/redoc",
+        "openapi": "/openapi.json",
+    }
+
+    docs = client.get("/docs")
+    assert docs.status_code == 200
+    docs_csp = docs.headers["content-security-policy"]
+    assert "https://cdn.jsdelivr.net" in docs_csp
+    assert "*" not in docs_csp
+
+    redoc = client.get("/redoc")
+    assert redoc.status_code == 200
+    assert "https://cdn.jsdelivr.net" in redoc.headers["content-security-policy"]
+
+    openapi = client.get("/openapi.json")
+    assert openapi.status_code == 200
+    assert openapi.json()["info"]["title"] == "SentinelOps Cybersecurity Incident Platform"
+
+    protected = client.get("/incidents")
+    assert protected.status_code == 401
+    protected_csp = protected.headers["content-security-policy"]
+    assert "https://cdn.jsdelivr.net" not in protected_csp
+    assert "*" not in protected_csp
+
+
+def test_database_readiness_middleware_allows_only_public_utility_paths(monkeypatch):
+    monkeypatch.setattr(main_module, "database_schema_ready", lambda: False)
+
+    assert client.get("/").status_code == 200
+    assert client.get("/health").status_code == 200
+    assert client.get("/docs").status_code == 200
+    assert client.get("/redoc").status_code == 200
+    assert client.get("/openapi.json").status_code == 200
+
+    protected = client.get("/incidents")
+    assert protected.status_code == 503
+    assert protected.json() == {"detail": "Database initialization failed."}
 
 
 def unique_ip() -> str:
