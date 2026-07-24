@@ -148,10 +148,10 @@ function shell(title, description) {
                 <div class="brand large">Sentinel<span>Ops</span><sup>&trade;</sup></div>
                 <h2>Analyst Sign In</h2>
                 <p>Authenticate to view SOC telemetry, incidents, and audit activity.</p>
-                <label>Username<input id="loginUsername" value="admin" required></label>
-                <label>Password<input id="loginPassword" type="password" value="AdminPass123!" required></label>
+                <label>Username<input id="loginUsername" value="analyst" required></label>
+                <label>Password<input id="loginPassword" type="password" value="AnalystPass123!" required></label>
                 <button type="submit">Sign In</button>
-                <small>Demo: admin / AdminPass123!</small>
+                <small>Demo: analyst / AnalystPass123!</small>
             </form>
         </div>`;
     document.getElementById("logoutBtn").onclick = logout;

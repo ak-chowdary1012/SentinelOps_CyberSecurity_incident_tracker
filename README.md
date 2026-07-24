@@ -1,215 +1,583 @@
-# SentinelOps Cybersecurity Incident Platform
+# SentinelOps™ — Cybersecurity Incident Management Platform
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-ORM-d71f00)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-336791)
 ![JWT](https://img.shields.io/badge/Auth-JWT%20%2B%20RBAC-7c3aed)
-![Tests](https://img.shields.io/badge/tests-4%20passing%20verified-34d399)
+![Tests](https://img.shields.io/badge/tests-7%20passing-34d399)
+![Deployment](https://img.shields.io/badge/deployment-live-success)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-SentinelOps is an enterprise-style Security Operations Center platform for tracking incidents, security events, systems, vulnerabilities, responses, users, and audit activity. It is designed as a realistic portfolio project that demonstrates backend architecture, REST API design, database modeling, authentication, RBAC, auditability, reporting, and SOC dashboard UX.
+**SentinelOps™** is a full-stack Security Operations Center (SOC) platform designed for incident tracking, security monitoring, vulnerability management, response coordination, auditability, and operational security analytics.
 
-The project intentionally keeps the stack approachable while presenting production-oriented engineering practices: FastAPI, SQLAlchemy, PostgreSQL-compatible schema design, JWT authentication, refresh tokens, password hashing, immutable audit logs, Docker, CI, tests, and a dark SOC dashboard.
+The project demonstrates production-oriented backend engineering, REST API design, database modeling, JWT authentication, role-based access control, audit logging, reporting, responsive dashboard design, containerization, automated testing, and cloud deployment.
 
-## Core Features
-- JWT authentication, hashed/rotated refresh tokens, logout, bcrypt password hashing, rate-limited auth, and role-based access control.
-- Roles: Admin, SOC Analyst, Incident Manager, Viewer.
-- CRUD workflows for users, systems, incidents, logs, vulnerabilities, and responses.
-- Immutable audit logging for create, update, delete, login, and logout events.
-- SOC command dashboard with KPIs, risk score, threat level, alert count, analysts online, systems protected, trend charts, timeline, and activity feed.
-- Incident timeline for Created, Assigned, Investigated, Resolved, and Closed stages.
-- Lightweight AI incident summary and severity/category recommendation endpoint.
-- Global search, entity filters, sorting, bounded pagination parameters, CSV/XLSX/PDF exports with spreadsheet-formula sanitization.
-- Docker, Docker Compose, GitHub Actions CI, `.env.example`, schema SQL, sample data, and automated API tests.
+Built and developed by **N V Avinash Krishna**.
 
-## Technology Stack
-- Backend: FastAPI, Pydantic, SQLAlchemy 2.0
-- Database: PostgreSQL-ready schema, SQLite default for local demo
-- Security: JWT, hashed refresh tokens, direct bcrypt hashing, RBAC dependencies, auth rate limiting
-- Frontend: HTML, CSS, JavaScript, Chart.js
-- DevOps: Docker, Docker Compose, GitHub Actions
-- Testing: Pytest, FastAPI TestClient, HTTPX
+---
 
-## Architecture
+## Live Deployment
+
+### SentinelOps Web Application
+
+**Frontend:**  
+https://sentinelops-frontend-qsec.onrender.com
+
+### Backend API
+
+**API:**  
+https://sentinelops-cybersecurity-incident.onrender.com
+
+### Interactive API Documentation
+
+**Swagger UI:**  
+https://sentinelops-cybersecurity-incident.onrender.com/docs
+
+**OpenAPI:**  
+https://sentinelops-cybersecurity-incident.onrender.com/openapi.json
+
+> The Render free-tier deployment may require a short startup period after inactivity.
+
+---
+
+## Demo Access
+
+A SOC Analyst account is available for exploring the deployed platform.
+
 ```text
-frontend/pages      Static SOC dashboard and workflows
-backend/app         FastAPI application
-backend/app/routers Route modules by business capability
-backend/app/services Business logic, risk scoring, audit helpers
-backend/app/crud    Shared persistence operations
-database            PostgreSQL schema and sample data
-docs                Architecture, API, verification, screenshots
-tests               Integration/API tests
+Username: analyst
+Password: AnalystPass123!
 ```
 
-More detail:
+The demo account uses the **SOC Analyst** role and therefore does not have administrative user-management permissions.
+
+Administrative credentials are intentionally not published.
+
+---
+
+## Core Features
+
+### Security Operations Dashboard
+
+- Organizational risk score
+- Threat-level monitoring
+- Critical and open incident metrics
+- Average resolution time
+- Protected-system statistics
+- Incident severity visualization
+- Incident trend analytics
+- SOC operational status
+- Security activity views
+- Responsive desktop and mobile interface
+
+### Incident Management
+
+- Create, view, update, search, filter, and manage security incidents
+- Severity and incident-status tracking
+- Incident timelines
+- Response association
+- Resolution tracking
+- Lightweight incident summarization
+
+### System Monitoring
+
+- Maintain protected-system inventory
+- System status monitoring
+- Department classification
+- Criticality tracking
+- Security-event association
+
+### Security Logs
+
+- Centralized security-event records
+- Severity classification
+- Source filtering
+- System association
+- Search and sorting
+
+### Vulnerability Management
+
+- CVE tracking
+- Severity classification
+- Vulnerability lifecycle status
+- Affected-system tracking
+- Search and filtering
+
+### Incident Response
+
+- Response-action tracking
+- Responder attribution
+- Incident association
+- Response-time measurement
+- Response history
+
+### Identity & Access Management
+
+SentinelOps implements backend-enforced role-based access control.
+
+Supported roles:
+
+```text
+Admin
+SOC Analyst
+Incident Manager
+Viewer
+```
+
+Administrative user-management operations are restricted to the **Admin** role.
+
+---
+
+## Authentication & Security
+
+SentinelOps implements:
+
+- JWT access tokens
+- Rotating refresh tokens
+- Hashed refresh-token storage
+- bcrypt password hashing
+- OAuth2 password flow for Swagger
+- Role-based authorization
+- Authentication rate limiting
+- Token revocation on logout
+- Protected API endpoints
+- Explicit production CORS allowlist
+- Security response headers
+- Content Security Policy
+- HTTP Strict Transport Security on HTTPS
+- Audit logging
+- Spreadsheet-formula sanitization for exports
+
+### Authentication Flow
+
+```text
+POST /auth/login
+       │
+       ▼
+Access Token + Refresh Token
+       │
+       ▼
+Authorization: Bearer <access_token>
+       │
+       ▼
+Protected API
+```
+
+Token renewal:
+
+```text
+POST /auth/refresh
+       │
+       ▼
+Rotated Access + Refresh Token Pair
+```
+
+Swagger OAuth2 authorization uses:
+
+```text
+POST /auth/token
+```
+
+---
+
+## Role-Based Access Control
+
+| Capability | Admin | SOC Analyst | Incident Manager | Viewer |
+|---|:---:|:---:|:---:|:---:|
+| View operational data | ✅ | ✅ | ✅ | ✅ |
+| Manage incidents | ✅ | ✅ | ✅ | ❌ |
+| Delete incidents | ✅ | ❌ | ✅ | ❌ |
+| Manage systems | ✅ | ✅ | ✅ | ❌ |
+| Delete systems | ✅ | ❌ | ❌ | ❌ |
+| Manage logs | ✅ | ✅ | ❌ | ❌ |
+| Delete logs | ✅ | ❌ | ❌ | ❌ |
+| Manage vulnerabilities | ✅ | ✅ | ❌ | ❌ |
+| Delete vulnerabilities | ✅ | ❌ | ❌ | ❌ |
+| Manage responses | ✅ | ✅ | ✅ | ❌ |
+| Delete responses | ✅ | ❌ | ✅ | ❌ |
+| Manage users | ✅ | ❌ | ❌ | ❌ |
+
+Authorization is enforced by the backend and is not dependent on frontend controls.
+
+---
+
+## Technology Stack
+
+### Backend
+
+- Python 3.12
+- FastAPI
+- SQLAlchemy 2.0
+- Pydantic
+- Uvicorn
+
+### Database
+
+- PostgreSQL-compatible SQLAlchemy schema
+- SQLite for local development
+- Relational models and foreign-key constraints
+- Indexed operational fields
+
+### Security
+
+- JWT
+- OAuth2
+- bcrypt
+- RBAC dependencies
+- Refresh-token rotation
+- Authentication rate limiting
+- CORS allowlisting
+- Security headers
+
+### Frontend
+
+- HTML5
+- CSS3
+- Vanilla JavaScript
+- Chart.js
+
+The production interface uses an **Obsidian, Ivory and Metallic Gold glass-style SOC design**, with responsive layouts for desktop and mobile devices.
+
+### DevOps
+
+- Docker
+- Docker Compose
+- GitHub Actions
+- Render
+
+### Testing
+
+- Pytest
+- FastAPI TestClient
+- HTTPX
+- Static JavaScript validation
+
+---
+
+## Architecture
+
+```text
+                     ┌───────────────────────┐
+                     │   SentinelOps Web UI  │
+                     │ HTML / CSS / JS       │
+                     │ Chart.js              │
+                     └───────────┬───────────┘
+                                 │ HTTPS
+                                 ▼
+                     ┌───────────────────────┐
+                     │     FastAPI API       │
+                     │ Authentication / RBAC │
+                     │ REST Endpoints        │
+                     └───────────┬───────────┘
+                                 │
+              ┌──────────────────┼──────────────────┐
+              ▼                  ▼                  ▼
+        Incident Logic       Audit Layer       Export/Analytics
+              │                  │                  │
+              └──────────────────┼──────────────────┘
+                                 ▼
+                     ┌───────────────────────┐
+                     │      SQLAlchemy       │
+                     │         ORM           │
+                     └───────────┬───────────┘
+                                 ▼
+                     ┌───────────────────────┐
+                     │      Database         │
+                     │ PostgreSQL / SQLite   │
+                     └───────────────────────┘
+```
+
+### Repository Structure
+
+```text
+frontend/pages
+    Static SOC dashboard and operational workflows
+
+backend/app
+    FastAPI application
+
+backend/app/routers
+    API routes organized by business capability
+
+backend/app/services
+    Business logic, analytics, risk scoring and audit helpers
+
+backend/app/crud
+    Shared persistence operations
+
+database
+    Database schema and sample data
+
+docs
+    Architecture, API and verification documentation
+
+tests
+    Automated API and integration tests
+```
+
+Additional documentation:
+
 - [Architecture](docs/ARCHITECTURE.md)
 - [API Reference](docs/API_REFERENCE.md)
 - [Project Structure](docs/PROJECT_STRUCTURE.md)
 - [Verification Checklist](docs/VERIFICATION_CHECKLIST.md)
 - [Hiring Manager Review](docs/HIRING_MANAGER_REVIEW.md)
+- [Deployment Guide](docs/DEPLOYMENT.md)
 
-## ER Diagram
+---
+
+## Data Model
+
 ```text
-users 1---* refresh_tokens
-users 1---* audit_logs
-systems 1---* logs
-incidents 1---* responses
-audit_logs records user/action/entity/before/after/ip/timestamp
+users
+  │
+  ├────< refresh_tokens
+  │
+  └────< audit_logs
+
+systems
+  │
+  └────< logs
+
+incidents
+  │
+  └────< responses
 ```
 
-## Authentication Flow
+Audit records capture information including:
+
 ```text
-POST /auth/login -> access token + refresh token
-Authorization: Bearer <access_token> -> protected API access
-POST /auth/refresh -> rotated access/refresh pair
-POST /auth/logout -> refresh token revoked + audit event
+user
+action
+entity
+entity_id
+before_value
+after_value
+ip_address
+timestamp
 ```
 
-## Quick Start
+---
+
+## API Capabilities
+
+Major API groups include:
+
+```text
+/auth
+/users
+/incidents
+/systems
+/logs
+/vulnerabilities
+/responses
+```
+
+The deployed Swagger interface provides interactive documentation and authenticated endpoint testing.
+
+---
+
+## Reporting & Export
+
+Operational records can be exported in:
+
+- CSV
+- Microsoft Excel (XLSX)
+- PDF
+
+Export generation includes spreadsheet-formula sanitization to reduce formula-injection risk.
+
+---
+
+## Local Development
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/ak-chowdary1012/SentinelOps_CyberSecurity_incident_tracker.git
+cd SentinelOps_CyberSecurity_incident_tracker
+```
+
+### 2. Create a virtual environment
+
 ```powershell
 python -m venv .venv
+```
+
+### 3. Install backend dependencies
+
+```powershell
 .\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+```
+
+### 4. Initialize the database
+
+```powershell
 .\.venv\Scripts\python.exe backend\init_db.py
+```
+
+### 5. Start the API
+
+```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
-In a second shell, serve the frontend:
+### 6. Start the frontend
+
+In another terminal:
+
 ```powershell
 python -m http.server 5500 --directory frontend\pages
 ```
 
 Open:
-- API docs: `http://127.0.0.1:8000/docs`
-- Frontend: `http://127.0.0.1:5500/dashboard.html`
 
-Demo users:
 ```text
-admin / AdminPass123!
-analyst / AnalystPass123!
+Frontend:
+http://127.0.0.1:5500/dashboard.html
+
+Swagger:
+http://127.0.0.1:8000/docs
 ```
 
+---
+
 ## Docker
+
 ```bash
 docker compose up --build
 ```
 
-The API runs at `http://127.0.0.1:8000`.
+The backend API will be available locally at:
 
-## Deployment
-Backend targets:
-- Render
-- Railway
-- Docker-compatible hosts
+```text
+http://127.0.0.1:8000
+```
 
-Frontend targets:
-- Netlify
-- Vercel
-- Static file hosting
+---
 
-Database targets:
-- Neon
-- Railway PostgreSQL
-- Supabase PostgreSQL
+## Production Deployment
 
-See [Deployment Guide](docs/DEPLOYMENT.md).
+SentinelOps is currently deployed on **Render** as two services:
 
-## Screenshots
-The repository includes a professional screenshot checklist covering dashboard, login, CRUD pages, charts, Swagger, architecture, ER diagram, mobile view, and dark theme.
+```text
+Static Frontend
+       │
+       │ HTTPS / CORS
+       ▼
+FastAPI Backend
+       │
+       ▼
+Database
+```
 
-See [Screenshot Checklist](docs/SCREENSHOT_CHECKLIST.md).
+The frontend automatically selects:
+
+```text
+http://127.0.0.1:8000
+```
+
+during local development and the production Render API when deployed.
+
+Production CORS uses an explicit frontend-origin allowlist.
+
+---
 
 ## Testing
+
+Run the complete automated test suite:
+
 ```bash
-python -m pytest -q
+python -m pytest
 ```
 
 Current verified result:
+
 ```text
-4 passed, 1 warning in 2.98s
+7 passed
 ```
 
-Additional static frontend check:
+Validate frontend JavaScript:
+
 ```bash
 node --check frontend/pages/app.js
 ```
 
-Live API smoke from a running local API:
-```powershell
-.\.venv\Scripts\python.exe live_api_smoke.py
-```
+Additional project verification includes:
 
-Browser dashboard proof:
-```powershell
-.\.venv\Scripts\python.exe dashboard_charts_proof.py
-```
-
-Security checks run during the latest audit:
 ```bash
-python -m pip_audit -r backend/requirements.txt
 python -m ruff check backend tests
+python -m pip_audit -r backend/requirements.txt
 ```
 
-Current verified security/lint results:
+Verified security/lint results:
+
 ```text
 No known vulnerabilities found
 All checks passed!
 ```
 
+---
+
+## Engineering Highlights
+
+SentinelOps demonstrates practical implementation of:
+
+- RESTful API architecture
+- Secure authentication
+- OAuth2 integration
+- JWT lifecycle management
+- Backend-enforced RBAC
+- Relational database modeling
+- Auditability
+- Secure export generation
+- SOC-oriented analytics
+- Responsive frontend engineering
+- Dockerized deployment
+- Production CORS configuration
+- Automated API testing
+- Cloud deployment
+
+---
+
 ## Future Enhancements
-- Alembic migrations.
-- Playwright browser tests and screenshot automation.
-- OpenTelemetry traces, structured logs, and metrics.
-- SIEM ingestion adapters.
-- Alert correlation and analyst assignment workflow.
-- Hosted demo environment and real screenshots in `docs/screenshots/`.
+
+Planned extensions include:
+
+- Alembic database migrations
+- Playwright end-to-end browser tests
+- OpenTelemetry tracing
+- Structured observability and metrics
+- SIEM ingestion adapters
+- Alert correlation
+- Analyst assignment workflows
+- Enhanced incident intelligence
+- Additional SOC automation
+
+---
 
 ## Repository Standards
+
 - [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security Policy](SECURITY.md)
 - [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Release Notes](docs/RELEASE_NOTES.md)
 
-## Fresh Clone Verified
+---
 
-Verified on 2026-07-21 from a separate clone directory at commit `5b9cfad`, with no copied local database, virtualenv, proof image, or `.env` from the working checkout:
+## Author
 
-```powershell
-git clone C:\Users\nekka\cybersec-incident-tracker sentinelops-freshclone
-cd sentinelops-freshclone
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
-.\.venv\Scripts\python.exe backend\init_db.py
-.\.venv\Scripts\python.exe -m pytest -q
-$server = Start-Process -PassThru -FilePath ".\.venv\Scripts\python.exe" -ArgumentList "-m","uvicorn","app.main:app","--app-dir","backend","--host","127.0.0.1","--port","8000"
-.\.venv\Scripts\python.exe live_api_smoke.py
-Stop-Process -Id $server.Id
-.\.venv\Scripts\python.exe dashboard_charts_proof.py
-```
+**N V Avinash Krishna**
 
-Real outputs from the completed verification:
+Cybersecurity • Software Engineering • Security Operations
 
-```text
-pytest: 4 passed, 1 warning in 3.36s
-ruff: All checks passed! (--no-cache used because .ruff_cache was locked)
-live_api_smoke.py:
-login_token_type: bearer
-created_system_id: 11
-created_incident_id: 12
-search_incidents_total: 1
-audit_rows: 50
-exports: {'csv': 'text/csv; charset=utf-8', 'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'pdf': 'application/pdf'}
-live api smoke: ok
-dashboard_charts_proof.py:
-browser login: ok, token present: True
-canvas count: 5
-canvas painted pixels: [20753, 8554, 10285, 12957, 9622]
-console errors: []
-screenshot: C:\Users\nekka\SentinelOps_CyberSecurity_incident_tracker\dashboard_charts_proof_latest.png
-```
+SentinelOps™ was designed and developed as a full-stack cybersecurity engineering project demonstrating secure application architecture, SOC workflows, backend engineering, RBAC, auditability, analytics, and production deployment.
 
-The browser proof starts its own API and frontend server, verifies browser login with real `fetch()`/CORS enforcement, confirms all five Chart.js canvases have painted pixels, and writes a local ignored screenshot (`dashboard_charts_proof.png` or `dashboard_charts_proof_latest.png` if Windows locks the canonical image).
+---
 
 ## License
-MIT
+
+This project is licensed under the MIT License.
+
+© 2026 N V Avinash Krishna
